@@ -1,85 +1,110 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# NestJS Distributed Reservation & Auth Microservice
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A distributed, monorepo-based backend architecture demonstrating microservice separation, inter-service authentication, and containerized deployment with NestJS and MongoDB.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## Architecture Overview
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+The system is built as a modular monorepo containing decoupled services communicating over internal transport layers:
 
-## Project setup
-
-```bash
-$ pnpm install
+```
+                      ┌──────────────────────┐
+                      │   Client Requests    │
+                      └──────────┬───────────┘
+                                 │
+                 ┌───────────────┴───────────────┐
+                 │                               │
+                 ▼                               ▼
+       ┌──────────────────┐             ┌──────────────────┐
+       │   Auth Service   │             │   Reservations   │
+       │   (Port 3001)    │             │   (Port 3000)    │
+       └────────┬─────────┘             └────────┬─────────┘
+                │                                │
+                │  ◄─────── TCP / RPC ────────►  │
+                │     (Token Verification)       │
+                ▼                                ▼
+       ┌──────────────────┐             ┌──────────────────┐
+       │   MongoDB Auth   │             │  MongoDB ResDB   │
+       └──────────────────┘             └──────────────────┘
 ```
 
-## Compile and run the project
+### Core Services:
+1. **apps/auth**: Handles user registration, bcrypt credential hashing, and JWT token issuance. Acts as the auth authority for other services via microservice transport.
+2. **apps/reservations**: Domain service managing booking lifecycle, availability checks, and reservation state.
+3. **libs/common**: Reusable shared modules including database abstraction (DatabaseModule), config loading, and logging filters.
 
+---
+
+## Tech Stack & Patterns
+
+- Framework: NestJS (TypeScript, Monorepo structure via nest-cli)
+- Database: MongoDB via @nestjs/mongoose with custom repository abstractions
+- Authentication: Stateless JWT + Passport strategies
+- Inter-Service Communication: @nestjs/microservices (TCP transport)
+- Environment Management: @nestjs/config with strict validation schemas
+- Containerization: Multi-stage Dockerfiles and docker-compose.yaml
+- Package Manager: pnpm workspace
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Node.js >= 18
+- Docker & Docker Compose
+- pnpm
+
+### Running with Docker (Recommended)
+
+1. Clone the repository:
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+git clone https://github.com/Divy001/reservations-sleepr.git
+cd reservations-sleepr
 ```
 
-## Run tests
-
+2. Start all microservices and databases:
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+docker-compose up --build
 ```
 
-## Resources
+3. The services will be accessible at:
+- Reservations API: http://localhost:3000
+- Auth Service: http://localhost:3001
 
-Check out a few resources that may come in handy when working with NestJS:
+### Running Locally for Development
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+1. Install dependencies:
+```bash
+pnpm install
+```
 
-## Support
+2. Run Auth service:
+```bash
+pnpm run start:dev auth
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+3. Run Reservations service in a separate terminal:
+```bash
+pnpm run start:dev reservations
+```
 
-## Stay in touch
+---
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Testing
 
-## License
+```bash
+# Run unit tests across all monorepo apps
+pnpm run test
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+# Run end-to-end tests
+pnpm run test:e2e
+```
+
+---
+
+## 📐 Engineering Highlights
+
+- Shared Repository Pattern: Common database connection and CRUD methods isolated inside libs/common/src/database to eliminate boilerplate code across services.
+- Fail-fast Environment Validation: Services do not start if critical environment secrets (JWT_SECRET, MONGODB_URI) are missing at startup.
+- Microservice Isolation: Domain database logic is kept isolated per service, preventing cross-domain schema coupling.
